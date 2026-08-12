@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<!--
+  ═══════════════════════════════════════════════════════════════════════════════
+  EL FARO — CAPA PREMIUM · NIVEL 2 (GSAP) · v1 — 11 ago 2026
+  ═══════════════════════════════════════════════════════════════════════════════
+  Extiende capa-premium.html (Nivel 1, cero dependencias). Este archivo es
+  EXPLÍCITAMENTE OPCIONAL y requiere que el sitio cargue GSAP por CDN — por eso
+  vive separado del módulo base, que mantiene su promesa de cero dependencias
+  intacta para los sitios que no necesitan este nivel.
+
+  Origen: research de 10 sitios premium de hospitality/lujo (Ultima Collection,
+  Sydney FC Return to the SFS, Bond Retail Partners, etc.) — 11 ago 2026. De los
+  3 sitios que se pudieron verificar con certeza (no solo la ficha de Awwwards
+  sino el tag técnico real), los 3 corren sobre GSAP. Desde mayo 2025, GSAP
+  —núcleo y TODOS los plugins, incluido SplitText— es 100% gratis, uso comercial
+  incluido (antes SplitText era pago, Club GreenSock). Se carga por <script> de
+  CDN, sin build, sin npm — encaja en el modelo de El Faro sin romperlo.
+
+  PATRONES NUEVOS:
+    H2  data-cp="titulo-gsap"   Título que se arma palabra por palabra (o letra
+                                 por letra) al entrar en viewport — SplitText.
+    A2  data-cp-pin             Storytelling con scroll-pin: una sección queda
+                                 fija mientras foto+texto cambian con el scroll
+                                 — ScrollTrigger pin + scrub.
+    P1  data-cp-lenis           Scroll suave global del sitio — Lenis.
+
+  CDN NECESARIO (pegar en <head> o antes de este script, en ESTE orden):
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.15.0/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.15.0/ScrollTrigger.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.15.0/SplitText.min.js"></script>
+    <!-- Solo si se usa P1: -->
+    <script src="https://cdn.jsdelivr.net/npm/lenis@1.1.18/dist/lenis.min.js"></script>
+
+  REGLA DURA DE DEGRADACIÓN (no negociable, hereda el espíritu del Nivel 1):
+  Si el CDN falla (bloqueado, sin internet, adblock agresivo), CADA patrón
+  degrada solo, sin excepción y sin que nadie tenga que acordarse de nada:
+    - H2 sin GSAP/SplitText → el título queda como texto normal, visible, tal
+      cual está escrito en el HTML. Nunca se esconde esperando que cargue JS.
+    - A2 sin GSAP/ScrollTrigger → la sección no se fija: se lee en el orden
+      normal del documento, scroll nativo. Ningún contenido depende del pin.
+    - P1 sin Lenis → scroll nativo del navegador. Cero diferencia funcional.
+  prefers-reduced-motion apaga H2 y A2 igual que el resto del módulo (Nivel 1).
+  P1 (Lenis) también se apaga con reduced-motion — cambia la sensación física
+  del scroll, y eso es exactamente lo que reduced-motion pide evitar.
+  A2 además se apaga en TOUCH: el pin necesita alto de viewport de sobra, en
+  mobile se siente atascado — ahí se prefiere el sticky reveal normal (A1).
+
+  CÓMO IMPORTAR EN UN SITIO REAL:
+    1. Sumar los 3 (o 4, si se usa P1) <script> de CDN antes de este bloque.
+    2. Copiar el <style id="cp-gsap-css"> completo o por patrón.
+    3. Copiar el <script id="cp-gsap-js"> AL FINAL DEL BODY, después del
+       cp-js del Nivel 1 (si está) y después de los <script> de CDN.
+    4. Marcar los elementos con los data-cp correspondientes. Nada más — el
+       módulo se auto-inicializa y no pisa nada del Nivel 1.
+
+  CUÁNDO USAR ESTE NIVEL (para Claude, "en el andar"):
+    - H2: hero de una landing con pocas palabras (nombre del lugar, promesa
+      corta) — Turismo, Estética, Venta Directa. No usar en párrafos largos
+      ni en Salud/Profesionales (el research de esas verticales ya establece
+      movimiento mínimo por diseño — H2 rompería esa regla).
+    - A2: cuando hay una secuencia real de 3-5 pasos/fotos que cuentan un
+      recorrido (un complejo, un menú de temporada, el proceso de un
+      tratamiento) — no forzarlo si no hay una secuencia genuina que contar.
+    - P1: pedirlo explícitamente antes de sumarlo — cambia la sensación del
+      sitio ENTERO, no una sección. Probar primero en un cliente con pocas
+      anclas de navegación internas (los links "#seccion" necesitan
+      lenis.scrollTo para no quedar rotos — ver nota en el JS).
+-->
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>El Faro — DEMO EN VIVO · Capa Premium Nivel 2 (GSAP)</title>
+
+<!-- Solo para que la demo de este archivo funcione sola. En un sitio real,
+     estos <script> van en el <head> del sitio, no acá adentro. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.15.0/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.15.0/ScrollTrigger.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.15.0/SplitText.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lenis@1.1.18/dist/lenis.min.js"></script>
+
+<style>
+:root{ --cp-acento:#2C5F7C; --fondo:#F7F5F1; --tinta:#26262B; --gris:#75716B; --linea:#E5E1D8; }
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:system-ui,sans-serif;background:var(--fondo);color:var(--tinta);line-height:1.6;}
+.demo{max-width:960px;margin:0 auto;padding:4rem 1.4rem;border-bottom:1px solid var(--linea);}
+.demo h2{font-size:1.4rem;margin-bottom:.4rem;}
+.demo .tag{font-family:monospace;font-size:.7rem;color:var(--cp-acento);display:block;margin-bottom:1.8rem;}
+.demo-hero-titulo{font-size:clamp(2rem,6vw,3.6rem);font-weight:700;letter-spacing:-.02em;line-height:1.1;}
+</style>
+
+<!-- ════════════════════════════════════════════════════════════════════════════
+     CSS DEL MÓDULO — Nivel 2 — copiar entero o por patrón (bloques ╔═╗)
+     ════════════════════════════════════════════════════════════════════════════ -->
+<style id="cp-gsap-css">
+/* ╔═ H2 · TÍTULO GSAP (data-cp="titulo-gsap") ═╗
+   Sin CSS propio: SplitText con mask genera su propio overflow:hidden por
+   palabra/letra al momento de correr. Si GSAP no cargó, el título ya está
+   visible tal cual — no depende de esta hoja de estilos para existir. */
+/* ╚═ fin H2 ═╝ */
+
+/* ╔═ A2 · SCROLL-PIN STORYTELLING (data-cp-pin) ═╗
+   Estructura esperada:
+   <div data-cp-pin>
+     <div class="cp-pin-visual">
+       <div class="cp-paso-visual" data-paso="0">…</div>
+       <div class="cp-paso-visual" data-paso="1">…</div>
+     </div>
+     <div class="cp-pin-texto">
+       <p class="cp-paso-texto" data-paso="0">…</p>
+       <p class="cp-paso-texto" data-paso="1">…</p>
+     </div>
+   </div>
+   Mobile/TOUCH: el JS no corre (ver regla dura arriba) — este grid pasa a
+   bloque único, todo visible en el orden normal del documento. */
+[data-cp-pin]{display:grid;grid-template-columns:1.1fr 1fr;gap:3rem;align-items:center;min-height:100vh;}
+[data-cp-pin] .cp-pin-visual{position:relative;aspect-ratio:4/5;border-radius:12px;overflow:hidden;}
+[data-cp-pin] .cp-paso-visual{position:absolute;inset:0;opacity:0;transition:opacity .5s ease;}
+[data-cp-pin] .cp-paso-visual.cp-activo{opacity:1;}
+[data-cp-pin] .cp-paso-texto{opacity:.3;transition:opacity .4s ease;padding:1.2rem 0;}
+[data-cp-pin] .cp-paso-texto.cp-activo{opacity:1;}
+@media(max-width:760px){
+  [data-cp-pin]{display:block;min-height:auto;}
+  [data-cp-pin] .cp-pin-visual{aspect-ratio:4/3;margin-bottom:1.5rem;position:relative;}
+  [data-cp-pin] .cp-paso-visual{position:relative;opacity:1;margin-bottom:.8rem;}
+  [data-cp-pin] .cp-paso-texto{opacity:1;}
+}
+/* ╚═ fin A2 ═╝ */
+
+/* ╔═ P1 · LENIS SCROLL SUAVE (data-cp-lenis en <body>) ═╗
+   Sin CSS propio — Lenis trabaja sobre el scroll nativo del documento.
+   Nota de integración: si el sitio tiene menú con anclas internas
+   (<a href="#seccion">), esas anclas necesitan pasar por lenis.scrollTo()
+   para no quedar "rotas" (con Lenis activo, el salto nativo del navegador
+   no coincide con la posición real por el suavizado) — ver JS más abajo,
+   el módulo ya intercepta los <a href="#…"> del documento automáticamente. */
+/* ╚═ fin P1 ═╝ */
+</style>
+
+<!-- ════════════════════════════════════════════════════════════════════════════
+     DEMO — para ver los 3 patrones funcionando. En un sitio real, este bloque
+     no se copia: se reemplaza por el contenido real del sitio.
+     ════════════════════════════════════════════════════════════════════════════ -->
+</head>
+<body data-cp-lenis>
+
+<div class="demo" style="padding-top:2rem;padding-bottom:1.2rem;">
+  <span class="tag" style="margin-bottom:.5rem;">DEMO EN VIVO — Nivel 2, capa GSAP</span>
+  <p style="max-width:640px;color:var(--gris);">Los 3 patrones están activos de verdad acá (Lenis incluido, a diferencia
+  del archivo fuente que se copia a un sitio real). Hacé scroll despacio para ver los tres.</p>
+</div>
+
+<div class="demo" style="padding-top:0;padding-bottom:1.5rem;">
+  <div id="cp-diag" style="font-family:monospace;font-size:.78rem;background:#fff;border:1px solid var(--linea);border-radius:8px;padding:.9rem 1.1rem;line-height:1.8;">Cargando diagnóstico…</div>
+</div>
+<script>
+window.addEventListener('load', function(){
+  setTimeout(function(){
+    var d = document.getElementById('cp-diag');
+    var reduce = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    var touch = !!(window.matchMedia && window.matchMedia('(hover: none)').matches);
+    d.innerHTML =
+      'GSAP cargó: ' + (typeof gsap !== 'undefined' ? '✅ sí' : '❌ NO — CDN bloqueado o sin internet') + '<br>' +
+      'SplitText cargó: ' + (typeof SplitText !== 'undefined' ? '✅ sí' : '❌ NO') + '<br>' +
+      'ScrollTrigger cargó: ' + (typeof ScrollTrigger !== 'undefined' ? '✅ sí' : '❌ NO') + '<br>' +
+      'Lenis cargó: ' + (typeof Lenis !== 'undefined' ? '✅ sí' : '❌ NO') + '<br>' +
+      'Tu sistema pide prefers-reduced-motion: ' + (reduce ? '⚠️ SÍ — por eso no ves ninguna animación, es a propósito' : '✅ no, no bloquea nada') + '<br>' +
+      'Tu navegador se detecta como touch: ' + (touch ? 'sí (el patrón A2 se apaga a propósito en touch)' : 'no');
+  }, 300);
+});
+</script>
+
+<div class="demo">
+  <h2>H2 — Título GSAP (SplitText, palabra por palabra)</h2>
+  <span class="tag">data-cp="titulo-gsap" data-cp-tipo="palabras"</span>
+  <h1 class="demo-hero-titulo" data-cp="titulo-gsap" data-cp-tipo="palabras">
+    Cirse Club de Lago
+  </h1>
+</div>
+
+<div class="demo">
+  <h2>A2 — Scroll-pin storytelling</h2>
+  <span class="tag">data-cp-pin — hacé scroll dentro de esta sección</span>
+  <div data-cp-pin data-cp-duracion="3">
+    <div class="cp-pin-visual" style="background:#1c3d4d;">
+      <div class="cp-paso-visual cp-activo" data-paso="0" style="background:linear-gradient(135deg,#2C5F7C,#1c3d4d);display:flex;align-items:center;justify-content:center;color:#fff;font-family:monospace;">FOTO MUELLE</div>
+      <div class="cp-paso-visual" data-paso="1" style="background:linear-gradient(135deg,#7C5F2C,#4d3d1c);display:flex;align-items:center;justify-content:center;color:#fff;font-family:monospace;">FOTO CABAÑAS</div>
+      <div class="cp-paso-visual" data-paso="2" style="background:linear-gradient(135deg,#2C7C5F,#1c4d3d);display:flex;align-items:center;justify-content:center;color:#fff;font-family:monospace;">FOTO RESTAURANTE</div>
+    </div>
+    <div class="cp-pin-texto">
+      <p class="cp-paso-texto cp-activo" data-paso="0"><strong>El muelle.</strong> Amarrás tu lancha a metros de la puerta del club — acceso directo desde el lago.</p>
+      <p class="cp-paso-texto" data-paso="1"><strong>Las cabañas.</strong> Vista al lago desde cada una, a cinco minutos a pie del muelle.</p>
+      <p class="cp-paso-texto" data-paso="2"><strong>Mercat.</strong> Cocina de estación con lo que trae el lago y el bosque, todos los días.</p>
+    </div>
+  </div>
+</div>
+
+<div class="demo" style="border-bottom:none;padding-bottom:6rem;">
+  <h2>P1 — Lenis (scroll suave global)</h2>
+  <span class="tag">data-cp-lenis en &lt;body&gt; — activo en TODA esta demo</span>
+  <p style="max-width:600px;color:var(--gris);">Si el scroll de esta página entera se sintió más "amortiguado" que
+  el scroll nativo del navegador al bajar hasta acá — eso es Lenis. Es el único de los tres que no se ve en un
+  lugar puntual: se siente en el gesto de scrollear, de punta a punta.</p>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════════════
+     JS DEL MÓDULO — Nivel 2 — copiar entero o por patrón (bloques ╔═╗)
+     ════════════════════════════════════════════════════════════════════════════ -->
+<script id="cp-gsap-js">
+(function(){
+  'use strict';
+  // Reusa las banderas del Nivel 1 si está cargado; si no, las calcula solo —
+  // este módulo tiene que poder vivir sin el Nivel 1 también.
+  const REDUCE = window.CP ? window.CP.REDUCE
+    : !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  const TOUCH  = window.CP ? window.CP.TOUCH
+    : !!(window.matchMedia && window.matchMedia('(hover: none)').matches);
+  const $$ = (s, c=document) => [...c.querySelectorAll(s)];
+  const GSAP_OK = typeof gsap !== 'undefined';
+
+  /* ╔═ H2 · TÍTULO GSAP (SplitText + mask) ═╗
+     mask:"words" (o "chars") envuelve cada unidad en su propio contenedor
+     overflow:hidden — API oficial desde el rewrite de SplitText (GSAP 3.13+,
+     mayo 2025). Accesibilidad: SplitText agrega aria-label al elemento
+     original y aria-hidden a los spans generados, automático, sin config. */
+  function initTituloGSAP(){
+    if(!GSAP_OK || typeof SplitText === 'undefined' || REDUCE) return; // degrade: texto ya visible
+    gsap.registerPlugin(SplitText, ScrollTrigger);
+    $$('[data-cp="titulo-gsap"]').forEach(el=>{
+      const tipo = el.dataset.cpTipo === 'letras' ? 'chars' : 'words';
+      const split = SplitText.create(el, { type: tipo, mask: tipo });
+      const targets = tipo === 'chars' ? split.chars : split.words;
+      gsap.from(targets, {
+        yPercent: 110,
+        opacity: 0,
+        stagger: tipo === 'chars' ? 0.02 : 0.06,
+        duration: 0.9,
+        ease: 'power3.out',
+        scrollTrigger: { trigger: el, start: 'top 85%', once: true }
+      });
+    });
+  }
+  /* ╚═ fin H2 ═╝ */
+
+  /* ╔═ A2 · SCROLL-PIN STORYTELLING (ScrollTrigger pin + scrub) ═╗
+     Se apaga en TOUCH (el pin necesita viewport alto de sobra — en mobile
+     se siente atascado, mejor A1 sticky reveal normal) y con reduced-motion. */
+  function initPinStorytelling(){
+    if(!GSAP_OK || typeof ScrollTrigger === 'undefined' || REDUCE || TOUCH) return; // degrade: scroll normal
+    gsap.registerPlugin(ScrollTrigger);
+    $$('[data-cp-pin]').forEach(wrap=>{
+      const pasos = $$('.cp-paso-visual, .cp-paso-texto', wrap);
+      const nPasos = new Set(pasos.map(p=>p.dataset.paso)).size;
+      if(nPasos <= 1) return; // nada que contar en secuencia
+      const vueltas = parseFloat(wrap.dataset.cpDuracion) || nPasos;
+      ScrollTrigger.create({
+        trigger: wrap,
+        start: 'top top',
+        end: `+=${vueltas * 100}%`,
+        pin: true,
+        scrub: 0.6,
+        onUpdate: self => {
+          const idx = Math.min(nPasos - 1, Math.floor(self.progress * nPasos));
+          pasos.forEach(p => p.classList.toggle('cp-activo', Number(p.dataset.paso) === idx));
+        }
+      });
+    });
+  }
+  /* ╚═ fin A2 ═╝ */
+
+  /* ╔═ P1 · LENIS SCROLL SUAVE ═╗
+     Opt-in estricto: sin data-cp-lenis en <body>, Lenis nunca se inicializa
+     aunque el <script> esté cargado. smoothTouch:false a propósito — en
+     mobile el scroll suavizado se siente raro contra el hábito táctil nativo
+     y agrega jank real; el research de los 3 sitios verificados coincide en
+     que el efecto "cinemático" es cosa de desktop.
+     Sincronización con ScrollTrigger (si A2 está en la misma página): usa
+     gsap.ticker en vez de requestAnimationFrame propio, que es el patrón
+     documentado por GSAP+Lenis para que el pin de A2 no se desincronice. */
+  function initLenisScroll(){
+    if(typeof Lenis === 'undefined' || REDUCE) return; // degrade: scroll nativo
+    if(!document.body.hasAttribute('data-cp-lenis')) return; // opt-in explícito
+    const lenis = new Lenis({ duration: 1.1, smoothWheel: true, smoothTouch: false });
+    if(GSAP_OK && typeof ScrollTrigger !== 'undefined'){
+      lenis.on('scroll', ScrollTrigger.update);
+      gsap.ticker.add((time)=> lenis.raf(time * 1000));
+      gsap.ticker.lagSmoothing(0);
+    } else {
+      const raf = (time)=>{ lenis.raf(time); requestAnimationFrame(raf); };
+      requestAnimationFrame(raf);
+    }
+    // Anclas internas (<a href="#seccion">) rotas por el suavizado — se
+    // reenganchan automático, sin que el sitio tenga que hacer nada.
+    $$('a[href^="#"]').forEach(a=>{
+      a.addEventListener('click', (e)=>{
+        const id = a.getAttribute('href');
+        if(id.length > 1 && document.querySelector(id)){
+          e.preventDefault();
+          lenis.scrollTo(id, { offset: -20 });
+        }
+      });
+    });
+    window.CP_LENIS = lenis; // API por si el sitio necesita pausar/reanudar
+  }
+  /* ╚═ fin P1 ═╝ */
+
+  function init(){
+    initTituloGSAP();
+    initPinStorytelling();
+    initLenisScroll();
+  }
+  if(document.readyState !== 'loading') init();
+  else document.addEventListener('DOMContentLoaded', init);
+})();
+</script>
+
+</body>
+</html>
